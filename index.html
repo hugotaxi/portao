@@ -223,7 +223,7 @@
       authDomain: "esp01-82993.firebaseapp.com",
       databaseURL: "https://esp01-82993-default-rtdb.firebaseio.com",
       projectId: "esp01-82993",
-      storageBucket: "esp01-82993.appspot.com",
+      storageBucket: "esp01-82993.firebasestorage.app",
       messagingSenderId: "9720123463",
       appId: "1:9720123463:web:1b1ff85a2c17b2f35d2162"
     };
@@ -246,10 +246,13 @@
     const loading = document.getElementById("loading");
     const notification = document.getElementById("notification");
 
-    // Mostrar estado de carregamento
-    loading.style.display = "block";
-    loginForm.style.display = "none";
-    dashboard.style.display = "none";
+    // Função para verificar parâmetro na URL
+    function checkUrlParameter() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('portao')) {
+        toggleRelay1();
+      }
+    }
 
     // Função para mostrar notificação
     function showNotification(message, isSuccess = true) {
@@ -262,67 +265,24 @@
       }, 3000);
     }
 
-    // Função para acionar o relay1 temporariamente
-    function triggerRelay1Temporarily() {
+    // Função para alternar o Relay1
+    function toggleRelay1() {
       const relayRef = firebase.database().ref("/relay1");
       
-      // Liga o relay1
-      relayRef.set(true)
-        .then(() => {
-          showNotification("Portão acionado (ON)");
-          
-          // Desliga após 500ms
-          setTimeout(() => {
-            relayRef.set(false)
-              .then(() => {
-                showNotification("Portão desligado (OFF)");
-              })
-              .catch(error => {
-                console.error("Error turning off relay1:", error);
-              });
-          }, 500);
-        })
-        .catch(error => {
-          console.error("Error turning on relay1:", error);
-        });
-    }
-
-    // Verificar se a URL contém "/portao"
-    function checkUrlForPortaoCommand() {
-      // Usa window.location.href para pegar a URL completa
-      if (window.location.href.includes('/portao')) {
-        console.log("Comando /portao detectado na URL");
+      relayRef.get().then(snap => {
+        const currentState = snap.val();
+        const newState = !currentState;
         
-        // Espera o Firebase estar pronto e autenticado
-        const checkAuth = setInterval(() => {
-          if (firebase.auth().currentUser) {
-            clearInterval(checkAuth);
-            triggerRelay1Temporarily();
-            
-            // Remove o /portao da URL sem recarregar a página
-            const newUrl = window.location.href.replace('/portao', '');
-            history.replaceState({}, document.title, newUrl);
-            
-            // Força a atualização da URL na barra de endereços (útil para iOS)
-            window.location.hash = "updated-" + Date.now();
-          }
-        }, 100);
-      }
-    }
-
-    // Verificação mais robusta para iOS
-    function handleIOSDeepLink() {
-      // Verifica se é um dispositivo iOS
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      
-      if (isIOS) {
-        // Temporizador adicional para garantir que a URL seja capturada
-        setTimeout(checkUrlForPortaoCommand, 500);
-      }
-      
-      // Verificação normal
-      checkUrlForPortaoCommand();
+        relayRef.set(newState)
+          .then(() => {
+            showNotification(`Portão foi ${newState ? 'aberto' : 'fechado'}`);
+          })
+          .catch(error => {
+            console.error("Error updating relay1:", error);
+          });
+      }).catch(error => {
+        console.error("Error reading relay1 state:", error);
+      });
     }
 
     // Função para iniciar o controle dos relés
@@ -371,7 +331,7 @@
           loginForm.style.display = "none";
           dashboard.style.display = "block";
           startRelayControl();
-          handleIOSDeepLink(); // Verifica o comando /portao
+          checkUrlParameter(); // Verifica parâmetro na URL após login
         })
         .catch(error => {
           console.error("Login automático falhou:", error.message);
@@ -381,6 +341,21 @@
           document.getElementById("password").value = PREDEFINED_PASSWORD;
         });
     }
+
+    // Tentar login automático quando o Firebase estiver pronto
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        // Já está logado
+        loading.style.display = "none";
+        loginForm.style.display = "none";
+        dashboard.style.display = "block";
+        startRelayControl();
+        checkUrlParameter(); // Verifica parâmetro na URL
+      } else {
+        // Não está logado, tentar login automático
+        autoLogin();
+      }
+    });
 
     // Configurar o botão de login manual (fallback)
     loginBtn.addEventListener("click", () => {
@@ -401,7 +376,7 @@
           loginForm.style.display = "none";
           dashboard.style.display = "block";
           startRelayControl();
-          handleIOSDeepLink(); // Verifica o comando /portao
+          checkUrlParameter(); // Verifica parâmetro na URL após login
         })
         .catch(error => {
           loading.style.display = "none";
@@ -424,30 +399,6 @@
           showNotification("Logout falhou: " + error.message, false);
         });
     };
-
-    // Modificação no onAuthStateChanged
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        // Já está logado
-        loading.style.display = "none";
-        loginForm.style.display = "none";
-        dashboard.style.display = "block";
-        startRelayControl();
-        handleIOSDeepLink(); // Usa o novo handler para iOS
-      } else {
-        // Não está logado, tentar login automático
-        autoLogin();
-      }
-    });
-
-    // Verificação quando a página é carregada
-    document.addEventListener('DOMContentLoaded', function() {
-      // Verificação imediata
-      handleIOSDeepLink();
-      
-      // Verificação adicional após 1 segundo (para casos onde o iOS demora para processar a URL)
-      setTimeout(handleIOSDeepLink, 1000);
-    });
   </script>
 </body>
 </html>
