@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Firebase Relay Control Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0 10px 40px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      justify-content: space-between;
+    }
+    h1 {
+      margin-top: 30px;
+      font-size: 1.8rem;
+    }
+    .relay-card {
+      display: inline-block;
+      background-color: white;
+      padding: 20px;
+      margin: 15px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 220px;
+      vertical-align: top;
+    }
+    .relay-card h2 {
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+    .relay-card p {
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+    .relay-card button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      background-color: blue;
+      cursor: pointer;
+      font-size: 16px;
+      width: 90%;
+      transition: opacity 0.3s ease;
+    }
+    .relay-card button:hover {
+      opacity: 0.8;
+    }
+    #allOffBtn, #logoutBtn {
+      max-width: 300px;
+      width: 90%;
+      padding: 12px 25px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 15px auto;
+      display: block;
+      color: white;
+      transition: opacity 0.3s ease;
+    }
+    #allOffBtn {
+      background-color: #d32f2f;
+    }
+    #allOffBtn:hover {
+      opacity: 0.8;
+    }
+    #logoutBtn {
+      background-color: #555;
+    }
+    #logoutBtn:hover {
+      opacity: 0.8;
+    }
+    #dashboard {
+      display: none;
+    }
+    #loginForm {
+      max-width: 400px;
+      margin: 80px auto 20px;
+      background: white;
+      padding: 30px 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #loginForm input {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 10px 0 20px;
+      font-size: 1rem;
+      border: 1.5px solid #ccc;
+      border-radius: 10px;
+      box-sizing: border-box;
+      outline-offset: 2px;
+      transition: border-color 0.3s ease;
+    }
+    #loginForm input:focus {
+      border-color: #1e88e5;
+    }
+    #loginForm button {
+      width: 100%;
+      background-color: #1e88e5;
+      color: white;
+      padding: 12px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    #loginForm button:hover {
+      background-color: #1565c0;
+    }
+    #dashboard .relay-container {
+      max-width: 960px;
+      margin: 20px auto 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    @media (max-width: 700px) {
+      .relay-card {
+        width: 90%;
+        margin: 10px auto;
+        display: block;
+      }
+      body {
+        padding: 0 10px 60px;
+      }
+    }
+    footer {
+      font-size: 0.9rem;
+      color: #666;
+      padding: 10px 0;
+      margin-top: 40px;
+    }
+    .loading {
+      display: none;
+      margin: 50px auto;
+      font-size: 1.2rem;
+      color: #555;
+    }
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #4CAF50;
+      color: white;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      z-index: 1000;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="notification" id="notification"></div>
+
+  <h1>Firebase Relay Control Dashboard</h1>
+
+  <div class="loading" id="loading">Carregando...</div>
+
+  <!-- Login form -->
+  <div id="loginForm">
+    <input type="email" id="email" placeholder="Enter Email" required />
+    <input type="password" id="password" placeholder="Enter Password" required />
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <div class="relay-container">
+      <div class="relay-card">
+        <h2>Portão</h2>
+        <p>Status: <span id="status1">Loading...</span></p>
+        <button id="btn1">Acionar</button>
+      </div>
+
+      <div class="relay-card">
+        <h2>        </h2>
+        <p>Status: <span id="status3">Loading...</span></p>
+        <button id="btn3">        </button>
+      </div>
+
+     <div class="relay-card">
+        <h2>Led Cian</h2>
+        <p>Status: <span id="status2">Loading...</span></p>
+        <button id="btn2">Inverter</button>
+      </div>
+
+      <div class="relay-card">
+        <h2>            </h2>
+        <p>         <span id="status4">Loading...</span></p>
+        <button id="btn4">           </button>
+      </div>
+    </div>
+
+    <button id="allOffBtn">Desativar</button>
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+  <footer>
+    Created by Tech StudyCell
+  </footer>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZveB-Y_Wxwd3vjhktn4fFMqu2vR1t6no",
+      authDomain: "esp01-82993.firebaseapp.com",
+      databaseURL: "https://esp01-82993-default-rtdb.firebaseio.com",
+      projectId: "esp01-82993",
+      storageBucket: "esp01-82993.appspot.com",
+      messagingSenderId: "9720123463",
+      appId: "1:9720123463:web:1b1ff85a2c17b2f35d2162"
+    };
+
+    // Initialize Firebase
+    try {
+      firebase.initializeApp(firebaseConfig);
+    } catch (error) {
+      console.error("Firebase initialization error:", error);
+    }
+
+    // Credenciais pré-definidas
+    const PREDEFINED_EMAIL = "victor22pac@gmail.com";
+    const PREDEFINED_PASSWORD = "88331234";
+
+    // Elementos da página
+    const loginForm = document.getElementById("loginForm");
+    const dashboard = document.getElementById("dashboard");
+    const loginBtn = document.getElementById("loginBtn");
+    const loading = document.getElementById("loading");
+    const notification = document.getElementById("notification");
+
+    // Mostrar estado de carregamento
+    loading.style.display = "block";
+    loginForm.style.display = "none";
+    dashboard.style.display = "none";
+
+    // Função para mostrar notificação
+    function showNotification(message, isSuccess = true) {
+      notification.textContent = message;
+      notification.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
+      notification.style.display = 'block';
+      
+      setTimeout(() => {
+        notification.style.display = 'none';
+      }, 3000);
+    }
+
+    // Função para acionar o relay1 temporariamente
+    function triggerRelay1Temporarily() {
+      const relayRef = firebase.database().ref("/relay1");
+      
+      // Liga o relay1
+      relayRef.set(true)
+        .then(() => {
+          showNotification("Portão acionado (ON)");
+          
+          // Desliga após 500ms
+          setTimeout(() => {
+            relayRef.set(false)
+              .then(() => {
+                showNotification("Portão desligado (OFF)");
+              })
+              .catch(error => {
+                console.error("Error turning off relay1:", error);
+              });
+          }, 500);
+        })
+        .catch(error => {
+          console.error("Error turning on relay1:", error);
+        });
+    }
+
+    // Verificar se a URL contém "/portao"
+    function checkUrlForPortaoCommand() {
+      // Usa window.location.href para pegar a URL completa
+      if (window.location.href.includes('/portao')) {
+        console.log("Comando /portao detectado na URL");
+        
+        // Espera o Firebase estar pronto e autenticado
+        const checkAuth = setInterval(() => {
+          if (firebase.auth().currentUser) {
+            clearInterval(checkAuth);
+            triggerRelay1Temporarily();
+            
+            // Remove o /portao da URL sem recarregar a página
+            const newUrl = window.location.href.replace('/portao', '');
+            history.replaceState({}, document.title, newUrl);
+            
+            // Força a atualização da URL na barra de endereços (útil para iOS)
+            window.location.hash = "updated-" + Date.now();
+          }
+        }, 100);
+      }
+    }
+
+    // Verificação mais robusta para iOS
+    function handleIOSDeepLink() {
+      // Verifica se é um dispositivo iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      
+      if (isIOS) {
+        // Temporizador adicional para garantir que a URL seja capturada
+        setTimeout(checkUrlForPortaoCommand, 500);
+      }
+      
+      // Verificação normal
+      checkUrlForPortaoCommand();
+    }
+
+    // Função para iniciar o controle dos relés
+    function startRelayControl() {
+      const db = firebase.database();
+
+      const relays = [
+        { id: 1, path: "relay1" },
+        { id: 2, path: "relay2" },
+        { id: 3, path: "relay3" },
+        { id: 4, path: "relay4" },
+      ];
+
+      relays.forEach(relay => {
+        const statusText = document.getElementById(`status${relay.id}`);
+        const toggleButton = document.getElementById(`btn${relay.id}`);
+        const relayRef = db.ref("/" + relay.path);
+
+        relayRef.on("value", (snapshot) => {
+          const state = snapshot.val();
+          statusText.innerText = state ? "ON" : "OFF";
+          toggleButton.style.backgroundColor = state ? "green" : "blue";
+        });
+
+        toggleButton.onclick = () => {
+          relayRef.get().then(snap => {
+            relayRef.set(!snap.val());
+          });
+        };
+      });
+
+      document.getElementById("allOffBtn").onclick = () => {
+        relays.forEach(relay => {
+          db.ref("/" + relay.path).set(false);
+        });
+        showNotification("Todos os relés foram desligados");
+      };
+    }
+
+    // Função para login automático
+    function autoLogin() {
+      firebase.auth().signInWithEmailAndPassword(PREDEFINED_EMAIL, PREDEFINED_PASSWORD)
+        .then(userCredential => {
+          console.log("Autenticado como", userCredential.user.email);
+          loading.style.display = "none";
+          loginForm.style.display = "none";
+          dashboard.style.display = "block";
+          startRelayControl();
+          handleIOSDeepLink(); // Verifica o comando /portao
+        })
+        .catch(error => {
+          console.error("Login automático falhou:", error.message);
+          loading.style.display = "none";
+          loginForm.style.display = "block";
+          document.getElementById("email").value = PREDEFINED_EMAIL;
+          document.getElementById("password").value = PREDEFINED_PASSWORD;
+        });
+    }
+
+    // Configurar o botão de login manual (fallback)
+    loginBtn.addEventListener("click", () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        showNotification("Por favor, insira email e senha.", false);
+        return;
+      }
+
+      loading.style.display = "block";
+      loginForm.style.display = "none";
+
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          loading.style.display = "none";
+          loginForm.style.display = "none";
+          dashboard.style.display = "block";
+          startRelayControl();
+          handleIOSDeepLink(); // Verifica o comando /portao
+        })
+        .catch(error => {
+          loading.style.display = "none";
+          loginForm.style.display = "block";
+          showNotification("Login falhou: " + error.message, false);
+        });
+    });
+
+    // Configurar o botão de logout
+    document.getElementById("logoutBtn").onclick = () => {
+      firebase.auth().signOut()
+        .then(() => {
+          dashboard.style.display = "none";
+          loginForm.style.display = "block";
+          document.getElementById("email").value = PREDEFINED_EMAIL;
+          document.getElementById("password").value = PREDEFINED_PASSWORD;
+          showNotification("Logout realizado com sucesso");
+        })
+        .catch(error => {
+          showNotification("Logout falhou: " + error.message, false);
+        });
+    };
+
+    // Modificação no onAuthStateChanged
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        // Já está logado
+        loading.style.display = "none";
+        loginForm.style.display = "none";
+        dashboard.style.display = "block";
+        startRelayControl();
+        handleIOSDeepLink(); // Usa o novo handler para iOS
+      } else {
+        // Não está logado, tentar login automático
+        autoLogin();
+      }
+    });
+
+    // Verificação quando a página é carregada
+    document.addEventListener('DOMContentLoaded', function() {
+      // Verificação imediata
+      handleIOSDeepLink();
+      
+      // Verificação adicional após 1 segundo (para casos onde o iOS demora para processar a URL)
+      setTimeout(handleIOSDeepLink, 1000);
+    });
+  </script>
+</body>
+</html>
