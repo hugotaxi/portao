@@ -77,6 +77,7 @@
     #logoutBtn:hover {
       opacity: 0.8;
     }
+
     #dashboard {
       display: none;
     }
@@ -139,38 +140,15 @@
       padding: 10px 0;
       margin-top: 40px;
     }
-    .loading {
-      display: none;
-      margin: 50px auto;
-      font-size: 1.2rem;
-      color: #555;
-    }
-    .notification {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: #4CAF50;
-      color: white;
-      padding: 15px;
-      border-radius: 5px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      z-index: 1000;
-      display: none;
-    }
   </style>
 </head>
 <body>
 
-  <div class="notification" id="notification"></div>
-
   <h1>Firebase Relay Control Dashboard</h1>
-
-  <div class="loading" id="loading">Carregando...</div>
 
   <!-- Login form -->
   <div id="loginForm">
-    <input type="email" id="email" placeholder="Enter Email" required />
+    <input type="email" id="email" value="victor22pac@gmail.com" readonly />
     <input type="password" id="password" placeholder="Enter Password" required />
     <button id="loginBtn">Login</button>
   </div>
@@ -179,31 +157,31 @@
   <div id="dashboard">
     <div class="relay-container">
       <div class="relay-card">
-        <h2>Portão</h2>
+        <h2>Relay 1</h2>
         <p>Status: <span id="status1">Loading...</span></p>
-        <button id="btn1">Acionar</button>
+        <button id="btn1">Toggle</button>
       </div>
 
       <div class="relay-card">
-        <h2>        </h2>
-        <p>Status: <span id="status3">Loading...</span></p>
-        <button id="btn3">        </button>
-      </div>
-
-     <div class="relay-card">
-        <h2>Led Cian</h2>
+        <h2>Relay 2</h2>
         <p>Status: <span id="status2">Loading...</span></p>
-        <button id="btn2">Inverter</button>
+        <button id="btn2">Toggle</button>
       </div>
 
       <div class="relay-card">
-        <h2>            </h2>
-        <p>         <span id="status4">Loading...</span></p>
-        <button id="btn4">           </button>
+        <h2>Relay 3</h2>
+        <p>Status: <span id="status3">Loading...</span></p>
+        <button id="btn3">Toggle</button>
+      </div>
+
+      <div class="relay-card">
+        <h2>Relay 4</h2>
+        <p>Status: <span id="status4">Loading...</span></p>
+        <button id="btn4">Toggle</button>
       </div>
     </div>
 
-    <button id="allOffBtn">Desativar</button>
+    <button id="allOffBtn">All OFF</button>
     <button id="logoutBtn">Logout</button>
   </div>
 
@@ -217,7 +195,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 
   <script>
-    // Firebase config
+       // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDZveB-Y_Wxwd3vjhktn4fFMqu2vR1t6no",
       authDomain: "esp01-82993.firebaseapp.com",
@@ -228,64 +206,33 @@
       appId: "1:9720123463:web:1b1ff85a2c17b2f35d2162"
     };
 
-    // Initialize Firebase
-    try {
-      firebase.initializeApp(firebaseConfig);
-    } catch (error) {
-      console.error("Firebase initialization error:", error);
-    }
+    firebase.initializeApp(firebaseConfig);
 
-    // Credenciais pré-definidas
-    const PREDEFINED_EMAIL = "victor22pac@gmail.com";
-    const PREDEFINED_PASSWORD = "88331234";
-
-    // Elementos da página
     const loginForm = document.getElementById("loginForm");
     const dashboard = document.getElementById("dashboard");
     const loginBtn = document.getElementById("loginBtn");
-    const loading = document.getElementById("loading");
-    const notification = document.getElementById("notification");
 
-    // Função para verificar parâmetro na URL
-    function checkUrlParameter() {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('portao')) {
-        toggleRelay1();
+    loginBtn.addEventListener("click", () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!password) {
+        alert("Please enter password.");
+        return;
       }
-    }
 
-    // Função para mostrar notificação
-    function showNotification(message, isSuccess = true) {
-      notification.textContent = message;
-      notification.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
-      notification.style.display = 'block';
-      
-      setTimeout(() => {
-        notification.style.display = 'none';
-      }, 3000);
-    }
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          console.log("Signed in as", userCredential.user.email);
+          loginForm.style.display = "none";
+          dashboard.style.display = "block";
+          startRelayControl();
+        })
+        .catch(error => {
+          alert("Login failed: " + error.message);
+        });
+    });
 
-    // Função para alternar o Relay1
-    function toggleRelay1() {
-      const relayRef = firebase.database().ref("/relay1");
-      
-      relayRef.get().then(snap => {
-        const currentState = snap.val();
-        const newState = !currentState;
-        
-        relayRef.set(newState)
-          .then(() => {
-            showNotification(`Portão foi ${newState ? 'aberto' : 'fechado'}`);
-          })
-          .catch(error => {
-            console.error("Error updating relay1:", error);
-          });
-      }).catch(error => {
-        console.error("Error reading relay1 state:", error);
-      });
-    }
-
-    // Função para iniciar o controle dos relés
     function startRelayControl() {
       const db = firebase.database();
 
@@ -318,85 +265,18 @@
         relays.forEach(relay => {
           db.ref("/" + relay.path).set(false);
         });
-        showNotification("Todos os relés foram desligados");
       };
     }
 
-    // Função para login automático
-    function autoLogin() {
-      firebase.auth().signInWithEmailAndPassword(PREDEFINED_EMAIL, PREDEFINED_PASSWORD)
-        .then(userCredential => {
-          console.log("Autenticado como", userCredential.user.email);
-          loading.style.display = "none";
-          loginForm.style.display = "none";
-          dashboard.style.display = "block";
-          startRelayControl();
-          checkUrlParameter(); // Verifica parâmetro na URL após login
-        })
-        .catch(error => {
-          console.error("Login automático falhou:", error.message);
-          loading.style.display = "none";
-          loginForm.style.display = "block";
-          document.getElementById("email").value = PREDEFINED_EMAIL;
-          document.getElementById("password").value = PREDEFINED_PASSWORD;
-        });
-    }
-
-    // Tentar login automático quando o Firebase estiver pronto
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        // Já está logado
-        loading.style.display = "none";
-        loginForm.style.display = "none";
-        dashboard.style.display = "block";
-        startRelayControl();
-        checkUrlParameter(); // Verifica parâmetro na URL
-      } else {
-        // Não está logado, tentar login automático
-        autoLogin();
-      }
-    });
-
-    // Configurar o botão de login manual (fallback)
-    loginBtn.addEventListener("click", () => {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-
-      if (!email || !password) {
-        showNotification("Por favor, insira email e senha.", false);
-        return;
-      }
-
-      loading.style.display = "block";
-      loginForm.style.display = "none";
-
-      firebase.auth().signInWithEmailAndPassword(email, password)
-        .then(userCredential => {
-          loading.style.display = "none";
-          loginForm.style.display = "none";
-          dashboard.style.display = "block";
-          startRelayControl();
-          checkUrlParameter(); // Verifica parâmetro na URL após login
-        })
-        .catch(error => {
-          loading.style.display = "none";
-          loginForm.style.display = "block";
-          showNotification("Login falhou: " + error.message, false);
-        });
-    });
-
-    // Configurar o botão de logout
     document.getElementById("logoutBtn").onclick = () => {
       firebase.auth().signOut()
         .then(() => {
           dashboard.style.display = "none";
           loginForm.style.display = "block";
-          document.getElementById("email").value = PREDEFINED_EMAIL;
-          document.getElementById("password").value = PREDEFINED_PASSWORD;
-          showNotification("Logout realizado com sucesso");
+          document.getElementById("password").value = "";
         })
         .catch(error => {
-          showNotification("Logout falhou: " + error.message, false);
+          alert("Logout failed: " + error.message);
         });
     };
   </script>
