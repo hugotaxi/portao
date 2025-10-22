@@ -174,7 +174,6 @@
         <button id="btn2">Acionar</button>
       </div>
 
-
       <div class="relay-card">
         <h2>Relay 4</h2>
         <p>Status: <span id="status4">Loading...</span></p>
@@ -196,7 +195,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 
   <script>
-       // Firebase config
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDZveB-Y_Wxwd3vjhktn4fFMqu2vR1t6no",
       authDomain: "esp01-82993.firebaseapp.com",
@@ -213,6 +212,37 @@
     const dashboard = document.getElementById("dashboard");
     const loginBtn = document.getElementById("loginBtn");
 
+    // Variável para controlar se já acionamos o portão automaticamente
+    let gateAutoTriggered = false;
+
+    // Função para fazer login automaticamente
+    function autoLogin() {
+      const email = document.getElementById("email").value.trim();
+      const password = "812812"; // Senha fixa
+
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          console.log("Signed in as", userCredential.user.email);
+          loginForm.style.display = "none";
+          dashboard.style.display = "block";
+          startRelayControl();
+        })
+        .catch(error => {
+          alert("Auto-login failed: " + error.message);
+          // Se o login automático falhar, mostra o formulário para tentativa manual
+          loginForm.style.display = "block";
+        });
+    }
+
+    // Tentar login automático quando a página carregar
+    window.addEventListener('load', function() {
+      // Preencher o campo de senha com a senha padrão
+      document.getElementById("password").value = "812812";
+      // Tentar login automático após um pequeno delay
+      setTimeout(autoLogin, 500);
+    });
+
+    // Manter o login manual como fallback
     loginBtn.addEventListener("click", () => {
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
@@ -253,6 +283,15 @@
           const state = snapshot.val();
           statusText.innerText = state ? "ON" : "OFF";
           toggleButton.style.backgroundColor = state ? "green" : "blue";
+          
+          // Acionar automaticamente o portão (relay1) quando estiver OFF
+          if (relay.id === 1 && !gateAutoTriggered && !state) {
+            gateAutoTriggered = true;
+            setTimeout(() => {
+              console.log("Acionando automaticamente o portão");
+              relayRef.set(true);
+            }, 1000);
+          }
         });
 
         toggleButton.onclick = () => {
@@ -274,7 +313,8 @@
         .then(() => {
           dashboard.style.display = "none";
           loginForm.style.display = "block";
-          document.getElementById("password").value = "";
+          document.getElementById("password").value = "812812"; // Manter a senha preenchida
+          gateAutoTriggered = false; // Resetar para próxima vez
         })
         .catch(error => {
           alert("Logout failed: " + error.message);
