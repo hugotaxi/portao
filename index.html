@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <title>Firebase Relay Control Dashboard</title>
@@ -144,6 +144,24 @@
 </head>
 <body>
 
+  <!-- TELA DE BLOQUEIO INTEGRADA COM BANCO ONLINE -->
+  <div id="tela-bloqueio" style="position: fixed; inset: 0; background: #f9f9f9; z-index: 2147483647; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Arial, sans-serif; padding: 20px;">
+    <div style="width: 100%; max-width: 340px; background: #ffffff; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); text-align: center;">
+      <div style="margin-bottom: 12px;">
+        <span style="background: #f59e0b; color: #0f172a; font-weight: bold; font-size: 12px; padding: 4px 10px; border-radius: 8px; display: inline-block;">Hugo Táxi</span>
+      </div>
+      <h2 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Acesso Restrito</h2>
+      <p id="subtitulo-bloqueio" style="margin: 0 0 18px 0; color: #64748b; font-size: 13px;">Verificando dispositivo...</p>
+      
+      <div id="area-form-senha" style="display: none;">
+        <input type="password" inputmode="numeric" id="input-senha" placeholder="Senha" style="width: 100%; margin-bottom: 12px; text-align: center; font-size: 18px; letter-spacing: 3px; padding: 12px; border: 1.5px solid #ccc; border-radius: 10px; box-sizing: border-box;">
+        <button type="button" id="btn-desbloquear-online" onclick="verificarSenhaOnline()" style="width: 100%; padding: 12px; background: #1e88e5; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">Desbloquear Permanentemente</button>
+      </div>
+      
+      <p id="msg-erro" style="color: #dc2626; font-size: 13px; font-weight: 500; margin-top: 12px; margin-bottom: 0; display: none;">Senha incorreta. Tente novamente.</p>
+    </div>
+  </div>
+
   <h1>Firebase Relay Control Dashboard</h1>
 
   <!-- Login form -->
@@ -195,7 +213,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 
   <script>
-    // Firebase config
+    // ==========================================
+    // 1. CONFIGURAÇÃO DO FIREBASE E CONTROLE
+    // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyDZveB-Y_Wxwd3vjhktn4fFMqu2vR1t6no",
       authDomain: "esp01-82993.firebaseapp.com",
@@ -215,7 +235,12 @@
     // Variável para controlar se já acionamos o portão automaticamente
     let gateAutoTriggered = false;
 
-    // Função para fazer login automaticamente
+    // Função que libera a entrada no Firebase e aciona o portão (chamada APENAS após validação)
+    function iniciarSistemaPortao() {
+      document.getElementById("password").value = "812812";
+      setTimeout(autoLogin, 300);
+    }
+
     function autoLogin() {
       const email = document.getElementById("email").value.trim();
       const password = "812812"; // Senha fixa
@@ -229,20 +254,10 @@
         })
         .catch(error => {
           alert("Auto-login failed: " + error.message);
-          // Se o login automático falhar, mostra o formulário para tentativa manual
           loginForm.style.display = "block";
         });
     }
 
-    // Tentar login automático quando a página carregar
-    window.addEventListener('load', function() {
-      // Preencher o campo de senha com a senha padrão
-      document.getElementById("password").value = "812812";
-      // Tentar login automático após um pequeno delay
-      setTimeout(autoLogin, 500);
-    });
-
-    // Manter o login manual como fallback
     loginBtn.addEventListener("click", () => {
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
@@ -313,13 +328,135 @@
         .then(() => {
           dashboard.style.display = "none";
           loginForm.style.display = "block";
-          document.getElementById("password").value = "812812"; // Manter a senha preenchida
-          gateAutoTriggered = false; // Resetar para próxima vez
+          document.getElementById("password").value = "812812";
+          gateAutoTriggered = false;
         })
         .catch(error => {
           alert("Logout failed: " + error.message);
         });
     };
+
+    // ==========================================
+    // 2. SISTEMA DE SEGURANÇA E AUTENTICAÇÃO BASEROW
+    // ==========================================
+    const HASH_CORRETO = "197496d4514ca9bbfb27b52b5098cf92f78e099d73583851e45f55846b0b3abb";
+    const AUTH_BASEROW_URL = "https://api.baserow.io/";
+    const AUTH_BASEROW_TOKEN = "IKrER8jZ6NQENRIxVlNeF65L5J3ss1LH";
+    const AUTH_TABELA_LOGIN = "1324424";
+    const AUTH_CAMPO_NOME = "nome";
+
+    function obterAssinaturaDispositivo() {
+      const CHAVE_ID = "hugo_taxi_uuid_unico";
+      let idSalvo = null;
+
+      try {
+        idSalvo = localStorage.getItem(CHAVE_ID);
+      } catch (e) {}
+
+      if (!idSalvo) {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const partes = cookies[i].trim().split("=");
+          if (partes[0] === CHAVE_ID && partes[1]) {
+            idSalvo = decodeURIComponent(partes[1]);
+            break;
+          }
+        }
+      }
+
+      if (!idSalvo) {
+        idSalvo = "dev_" + Math.random().toString(36).substring(2, 10) + "_" + Date.now().toString(36);
+      }
+
+      try {
+        localStorage.setItem(CHAVE_ID, idSalvo);
+      } catch (e) {}
+
+      const umAnoSegundos = 31536000;
+      document.cookie = CHAVE_ID + "=" + encodeURIComponent(idSalvo) + "; max-age=" + umAnoSegundos + "; path=/; SameSite=Lax";
+
+      return idSalvo;
+    }
+
+    const meuIDDispositivo = obterAssinaturaDispositivo();
+
+    async function checarAutorizacaoOnline() {
+      try {
+        const resposta = await fetch(AUTH_BASEROW_URL + "api/database/rows/table/" + AUTH_TABELA_LOGIN + "/?user_field_names=true&filter__field_12355062__equal=" + encodeURIComponent(meuIDDispositivo), {
+          method: "GET",
+          headers: { "Authorization": "Token " + AUTH_BASEROW_TOKEN }
+        });
+        const dados = await resposta.json();
+        const autorizado = dados.results && dados.results.some(row => row[AUTH_CAMPO_NOME] === meuIDDispositivo);
+
+        if (autorizado) {
+          const el = document.getElementById("tela-bloqueio");
+          if (el) el.remove();
+          iniciarSistemaPortao(); // Libera o Firebase e abre o portão
+        } else {
+          document.getElementById("subtitulo-bloqueio").textContent = "Digite a senha para liberar este dispositivo";
+          document.getElementById("area-form-senha").style.display = "block";
+        }
+      } catch (e) {
+        document.getElementById("subtitulo-bloqueio").textContent = "Digite a senha para liberar este dispositivo";
+        document.getElementById("area-form-senha").style.display = "block";
+      }
+    }
+
+    checarAutorizacaoOnline();
+
+    function protegerTela() {
+      const el = document.getElementById("tela-bloqueio");
+      if (el && (el.style.display === "none" || el.style.visibility === "hidden" || el.style.opacity === "0")) {
+        location.reload();
+      }
+    }
+    setInterval(protegerTela, 800);
+
+    async function gerarHash(texto) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(texto);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function verificarSenhaOnline() {
+      const input = document.getElementById("input-senha");
+      const btn = document.getElementById("btn-desbloquear-online");
+      const hashDigitado = await gerarHash(input.value);
+
+      if (hashDigitado === HASH_CORRETO) {
+        btn.disabled = true;
+        btn.textContent = "Autorizando na nuvem...";
+        try {
+          let jsonData = {};
+          jsonData[AUTH_CAMPO_NOME] = meuIDDispositivo;
+
+          await fetch(AUTH_BASEROW_URL + "api/database/rows/table/" + AUTH_TABELA_LOGIN + "/?user_field_names=true", {
+            method: "POST",
+            headers: { "Authorization": "Token " + AUTH_BASEROW_TOKEN, "Content-Type": "application/json" },
+            body: JSON.stringify(jsonData)
+          });
+
+          const el = document.getElementById("tela-bloqueio");
+          if (el) el.remove();
+          iniciarSistemaPortao(); // Libera o Firebase e abre o portão após cadastrar a senha
+        } catch (err) {
+          alert("Erro de conexão ao registrar dispositivo. Tente novamente.");
+          btn.disabled = false;
+          btn.textContent = "Desbloquear Permanentemente";
+        }
+      } else {
+        document.getElementById("msg-erro").style.display = "block";
+        input.value = "";
+        input.focus();
+      }
+    }
+
+    document.getElementById("input-senha").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") verificarSenhaOnline();
+    });
   </script>
 </body>
 </html>
